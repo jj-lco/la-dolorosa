@@ -1,0 +1,25 @@
+[
+    {
+        "id": 1,
+        "gasto": {
+            "concepto": "pan",
+            "importe": 10.0,
+            "pagador": "JJ",
+            "participantes": [
+                "JJ",
+                "Javi",
+                "Puri"
+            ]
+        }
+    },
+    {
+        "concepto": "pan",
+        "importe": 10.0,
+        "pagador": "JJ",
+        "participantes": [
+            "JJ",
+            "Javi",
+            "Puri"
+        ]
+    }
+]
