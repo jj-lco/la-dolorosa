@@ -1,6 +1,6 @@
 # LaDolorosa
 
-This project offers an environment to manage debts and payments in a group of people or a financial setting, minimizing the amount of transactions necessary.
+Este proyecto ofrece un pequeño entorno para gestionar deudas y pagos en un grupo de personas o en un contexto financiero, minimizando el número de transacciones necesarias para cerras las cuentas.
 
 ## Formulation
 

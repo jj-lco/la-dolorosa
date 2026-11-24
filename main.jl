@@ -1,7 +1,8 @@
 using Gtk4
 
 # Lógica
-include("gastos.jl")
+include("src/personas.jl")
+include("src/gastos.jl")
 #include("balances.jl")
 #include("optimizacion.jl")
 
@@ -15,35 +16,32 @@ include("interfaz/vista_optimizacion.jl")
 function main()
 
     win = GtkWindow("LaDolorosa", 900, 600)
-
-    # Contenedor principal horizontal
     main_box = GtkBox(:h)
-
-    # Menú lateral
     menu = GtkBox(:v)
-
-    # Pila de pantallas
     stack = GtkStack()
 
+    # Cargar datos
+    personas = cargar_personas()
+    gastos = cargar_gastos()
+    
     # Crear pantallas
-    vista_personas = crear_vista_personas([""])
-
-    vista_gastos = crear_vista_gastos([""],Gasto[])
+    vista_personas = crear_vista_personas(personas)
+    vista_gastos = crear_vista_gastos(personas,gastos)
 
     pantalla_balances = GtkBox(:v)
     push!(pantalla_balances, GtkLabel("Balances"))
-
+    
     pantalla_opt = GtkBox(:v)
     push!(pantalla_opt, GtkLabel("Optimización"))
 
-    # Añadir pantallas a GtkStack
+    # Añadir pantallas al stack
     push!(stack, vista_personas, "personas")
     push!(stack, vista_gastos, "gastos")
     push!(stack, pantalla_balances, "balances")
     push!(stack, pantalla_opt, "optimizacion")
 
     # Botones
-    btn_personas = GtkButton("Personas")
+    btn_personas = GtkButton("Participantes")
     btn_gastos = GtkButton("Gastos")
     btn_balances = GtkButton("Balances")
     btn_opt = GtkButton("Optimización")
