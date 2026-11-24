@@ -1,144 +1,185 @@
-function crear_vista_gastos(personas::Vector{String}, gastos::Vector{Gasto})
+function crear_vista_gastos(personas::Vector{String},gastos::Vector{Gasto})
 
-    # Contenedor principal
-    vista = GtkBox(:v, 10)
+    vista = GtkBox(:v, 15)
 
-    # Título
     titulo = GtkLabel("Gestión de gastos")
     push!(vista, titulo)
 
-    # -----------------------------------
-    # Concepto del gasto
-    # -----------------------------------
+    columnas = GtkBox(:h, 20)
+    push!(vista, columnas)
 
+    # LISTA DE GASTOS
+
+    columna_lista = GtkBox(:v, 10)
+
+    push!(columna_lista, GtkLabel("Gastos registrados"))
+
+    # GtkStack permite sustituir fácilmente el contenido
+    stack_lista = GtkStack()
+
+    function crear_lista()
+
+        contenedor = GtkBox(:v, 8)
+
+        if isempty(gastos)
+            push!(contenedor, GtkLabel("No hay gastos registrados."))
+        end
+
+        for gasto in gastos
+
+            fila = GtkBox(:h, 8)
+
+            texto = "$(gasto.concepto) — $(gasto.importe) €"
+
+            etiqueta = GtkLabel(texto)
+            boton_eliminar = GtkButton("×")
+
+            push!(fila, etiqueta)
+            push!(fila, boton_eliminar)
+
+            signal_connect(boton_eliminar, "clicked") do widget
+
+                if eliminar_gasto!(gastos, gasto.id)
+                    actualizar_lista()
+                end
+
+            end
+
+            push!(contenedor, fila)
+        end
+
+        return contenedor
+    end
+
+    function actualizar_lista()
+        nuevo_contenedor = crear_lista()
+
+        # Añadir una nueva página y mostrarla
+        push!(stack_lista, nuevo_contenedor)
+        set_gtk_property!(
+            stack_lista,
+            :visible_child,
+            nuevo_contenedor
+        )
+    end
+
+    actualizar_lista()
+
+    push!(columna_lista, stack_lista)
+
+    # ==========================================
+    # COLUMNA DERECHA: AÑADIR GASTO
+    # ==========================================
+
+    columna_formulario = GtkBox(:v, 10)
+
+    push!(columna_formulario, GtkLabel("Añadir gasto"))
+
+    # Concepto
     entrada_concepto = GtkEntry()
+
     set_gtk_property!(
         entrada_concepto,
         :placeholder_text,
         "Concepto del gasto"
     )
-    push!(vista, entrada_concepto)
 
-    # -----------------------------------
+    push!(columna_formulario, entrada_concepto)
+
     # Importe
-    # -----------------------------------
-
     entrada_importe = GtkEntry()
+
     set_gtk_property!(
         entrada_importe,
         :placeholder_text,
         "Importe (€)"
     )
-    push!(vista, entrada_importe)
 
-    # -----------------------------------
-    # Selección del pagador
-    # -----------------------------------
+    push!(columna_formulario, entrada_importe)
 
-    etiqueta_pagador = GtkLabel("¿Quién ha pagado?")
-    push!(vista, etiqueta_pagador)
+    # Pagador
+    push!(columna_formulario, GtkLabel("Pagador"))
 
     combo_pagador = GtkDropDown(personas)
-    push!(vista, combo_pagador)
+    push!(columna_formulario, combo_pagador)
 
-    # -----------------------------------
-    # Selección de participantes
-    # -----------------------------------
-
-    etiqueta_participantes = GtkLabel("Participantes:")
-    push!(vista, etiqueta_participantes)
+    # Participantes
+    push!(columna_formulario, GtkLabel("Participantes"))
 
     checks_participantes = GtkCheckButton[]
 
     for persona in personas
+
         check = GtkCheckButton(persona)
+
         push!(checks_participantes, check)
-        push!(vista, check)
+        push!(columna_formulario, check)
+
     end
 
-    # -----------------------------------
-    # Lista de gastos registrados
-    # -----------------------------------
-
-    etiqueta_lista = GtkLabel("Gastos registrados")
-    push!(vista, etiqueta_lista)
-
-    lista_gastos = GtkLabel("")
-
-    function actualizar_lista_gastos()
-        if isempty(gastos)
-            texto = "Todavía no hay gastos registrados."
-        else
-            lineas = String[]
-
-            for gasto in gastos
-                push!(
-                    lineas,
-                    "$(gasto.concepto): $(gasto.importe) € - Pagó: $(gasto.pagador)"
-                )
-            end
-
-            texto = join(lineas, "\n")
-        end
-
-        set_gtk_property!(lista_gastos, :label, texto)
-    end
-
-    actualizar_lista_gastos()
-    push!(vista, lista_gastos)
-
-    # -----------------------------------
-    # Botón añadir gasto
-    # -----------------------------------
-
+    # Botón añadir
     btn_anadir = GtkButton("Añadir gasto")
-    push!(vista, btn_anadir)
+
+    push!(columna_formulario, btn_anadir)
 
     signal_connect(btn_anadir, "clicked") do widget
 
-        concepto = strip(
-            get_gtk_property(entrada_concepto, :text, String)
+        concepto = String(strip(
+            get_gtk_property(
+                entrada_concepto,
+                :text,
+                String
+            )
+        ))
+
+        texto_importe = String(strip(
+            get_gtk_property(
+                entrada_importe,
+                :text,
+                String
+            )
+        ))
+
+        importe = tryparse(
+            Float64,
+            replace(texto_importe, "," => ".")
         )
 
-        texto_importe = strip(
-            get_gtk_property(entrada_importe, :text, String)
-        )
-
-        # Validar concepto
+        # Validaciones
         if isempty(concepto)
             println("Introduce un concepto.")
             return
         end
-
-        # Validar importe
-        importe = tryparse(Float64, replace(texto_importe, "," => "."))
 
         if importe === nothing || importe <= 0
             println("Introduce un importe válido.")
             return
         end
 
-        # Validar pagador
-        indice_pagador = get_gtk_property(
-            combo_pagador,
-            :selected,
-            UInt32
-        )
+        if isempty(personas)
+            println("No hay personas registradas.")
+            return
+        end
 
-        if indice_pagador >= length(personas)
+        # Pagador
+        indice_pagador = Gtk4.selected(combo_pagador)
+
+        if indice_pagador === nothing
             println("Selecciona un pagador.")
             return
         end
 
-        pagador = personas[Int(indice_pagador) + 1]
+        pagador = personas[indice_pagador]
 
-        # Obtener participantes seleccionados
+        # Participantes
         participantes = String[]
 
         for (i, check) in enumerate(checks_participantes)
+
             if get_gtk_property(check, :active, Bool)
                 push!(participantes, personas[i])
             end
+
         end
 
         if isempty(participantes)
@@ -146,29 +187,41 @@ function crear_vista_gastos(personas::Vector{String}, gastos::Vector{Gasto})
             return
         end
 
-        # Crear gasto
-        nuevo_gasto = Gasto(
-            concepto,
-            importe,
-            pagador,
-            participantes
-        )
+        # Guardar
+        try
 
-        push!(gastos, nuevo_gasto)
+            anadir_gasto!(
+                gastos,
+                concepto,
+                importe,
+                pagador,
+                participantes
+            )
 
-        # Actualizar interfaz
-        actualizar_lista_gastos()
+            actualizar_lista()
 
-        # Limpiar campos
-        set_gtk_property!(entrada_concepto, :text, "")
-        set_gtk_property!(entrada_importe, :text, "")
+            # Limpiar formulario
+            set_gtk_property!(entrada_concepto, :text, "")
+            set_gtk_property!(entrada_importe, :text, "")
 
-        for check in checks_participantes
-            set_gtk_property!(check, :active, false)
+            for check in checks_participantes
+                set_gtk_property!(check, :active, false)
+            end
+
+        catch error
+
+            println("Error al guardar el gasto: ", error)
+
         end
 
-        println("Gasto añadido correctamente.")
     end
+
+    # ==========================================
+    # AÑADIR COLUMNAS A LA VISTA
+    # ==========================================
+
+    push!(columnas, columna_lista)
+    push!(columnas, columna_formulario)
 
     return vista
 end
