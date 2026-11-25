@@ -1,36 +1,54 @@
 using JuMP, GLPK
 
-include("balances.jl")
+struct Transferencia
+    deudor::String
+    acreedor::String
+    importe::Float64
+end
 
-## Balances
-balances = calcular_balances()
-
-S = [i for i in keys(balances) if balances[i] < 0]
-D = [j for j in keys(balances) if balances[j] > 0]
-
-fuentes = Dict(i => -balances[i] for i in S)
-pozos = Dict(j => balances[j] for j in D)
-
-# Modelo de optimización
-function optimizar(fuentes,pozos)
+# Algoritmo determinístico para instancias pequeñas
+function opt_deterministico(balances::AbstractDict{String, <:Real})
 
     model = Model(GLPK.Optimizer)
 
-    @variable(model, x[S,D] >= 0) # dinero a enviar de la fuente f al pozo p (€)
-    @variable(model, y[S,D], Bin) # indicador: si se realiza una transacción de la fuente f al pozo p
+    F = [f for (f, v) in balances if v < 0] # fuentes
+    S = [s for (s, v) in balances if v > 0] # sumideros
 
-    @objective(model, Min, sum(y[i,j] for i in S, j in D))
+    @variable(model, x[F,S] >= 0) # dinero a enviar de la fuente f al sumidero s (€)
+    @variable(model, y[F,S], Bin) # indicador: si se realiza una transacción de la fuente f al sumidero s
 
-    @constraint(model, [i in S], sum(x[i,j] for j in D) == supply[i])
-    @constraint(model, [j in D], sum(x[i,j] for i in S) == demand[j])
-    @constraint(model, [i in S, j in D],
-        x[i,j] <= min(supply[i], demand[j]) * y[i,j]
+    @objective(model, Min, sum(y[f,s] for f in F, s in S))
+
+    @constraint(model, [f in F], sum(x[f,s] for s in S) == -balances[f])
+    @constraint(model, [s in S], sum(x[f,s] for f in F) == balances[s])
+    @constraint(model, [f in F, s in S],
+        x[f,s] <= min(-balances[f], balances[s]) * y[f,s]
     )
-
+    
     JuMP.optimize!(model)
+    
+    if termination_status(model) != MOI.OPTIMAL
+        error("No se ha encontrado solución óptima.")
+    end
 
-    # Construir un diccionario de transacciones
-    transacciones = Dict()
+    transferencias = Transferencia[]
+    for f in F, s in S
+        importe = round(value(x[f,s]); digits = 2)
 
-    return transacciones
+        if importe > 0
+            push!(
+                transferencias,
+                Transferencia(f,s,importe)
+            )
+        end
+    end
+
+    return transferencias
+end
+
+# Algoritmo greedy para instancias grandes
+function opt_greedy()
+
+
+    return transferencias
 end

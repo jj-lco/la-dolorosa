@@ -1,12 +1,3 @@
-include("gastos.jl")
-
-struct Balance
-    persona::String
-    total_pagado::Float64
-    total_correspondiente::Float64
-    balance::Float64
-end
-
 function calcular_balances(
     personas::Vector{String},
     gastos::Vector{Gasto}
@@ -42,7 +33,7 @@ function calcular_balances(
         end
     end
 
-    balances = Balance[]
+    balances = Dict()
 
     for p in personas
 
@@ -63,24 +54,6 @@ function calcular_balances(
     end
 
     return balances
-end
-
-# Mostrar balances por consola
-function mostrar_balances(balances::Vector{Balance})
-
-    println("\n========== BALANCES ==========")
-
-    for b in balances
-
-        println(
-            "$(b.persona): ",
-            "Pagado = $(round(b.total_pagado, digits=2)) €, ",
-            "Le corresponde = $(round(b.total_correspondiente, digits=2)) €, ",
-            "Balance = $(round(b.balance, digits=2)) €"
-        )
-    end
-
-    println("==============================\n")
 end
 
 function obtener_deudores(balances::Vector{Balance})
